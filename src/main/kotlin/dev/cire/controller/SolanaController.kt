@@ -1,37 +1,37 @@
 package dev.cire.controller
 
-import dev.cire.data.WebsocketMethods
-import dev.cire.data.WebsocketRequestBuilder
-import dev.cire.helpers.PUMPFUN_PROGRAM_ADDRESS
 import dev.cire.service.SolanaService
+import dev.cire.service.SubscriptionMethods
 import io.ktor.http.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 
 
 fun Routing.solanaController() {
-    val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val service = SolanaService()
+    val service = SolanaService.Builder()
+        .subscription(
+            SubscriptionMethods.LogsSubscribe(
+                listOf("11111111111111111111111111111111")
+            )
+        )
+        .build()
 
     route("/solana") {
         get("/connect") {
             CoroutineScope(Job()).launch {
-                val webSocketRequest = WebsocketRequestBuilder()
-                    .method(WebsocketMethods.PROGRAM_SUBSCRIBE)
-                    .param(PUMPFUN_PROGRAM_ADDRESS)
-                    .param(mapOf("encoding" to "jsonParsed"))
-                    .build()
-
-                service.connect(webSocketRequest).onEach {
+                service.connect().collect {
                     println(it)
-                }.launchIn(coroutineScope)
+                }
             }
+
+            call.respond(
+                message = HttpStatusCode.OK,
+                typeInfo = null
+            )
         }
 
         get("/close") {
-            service.closeWebsocket()
+            service.disconnect()
             call.respond(
                 HttpStatusCode.OK,
                 typeInfo = null

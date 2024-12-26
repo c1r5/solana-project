@@ -1,7 +1,11 @@
-package dev.cire.service
+package dev.cire.solana.service
 
-import dev.cire.data.WsNotification
 import dev.cire.helpers.SOLANA_RPC
+import dev.cire.solana.connection.Rpc
+import dev.cire.solana.data.LogsNotification
+import dev.cire.solana.data.ProgramNotification
+import dev.cire.solana.rpc.data.dtos.request.Commitment
+import dev.cire.solana.data.SolanaNotification
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -9,16 +13,13 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
-import org.sol4k.api.Commitment
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 
 private val client = HttpClient(CIO) {
@@ -36,6 +37,9 @@ class SolanaService (
     val subscription: SubscriptionMethods
 ) {
     private val _isClosed = MutableStateFlow(true)
+    private val _incomingNotification = MutableStateFlow<SolanaNotification?>(null)
+
+    val incomingNotification: StateFlow<SolanaNotification?> = _incomingNotification.asStateFlow()
 
     data class Builder(
         private var subscribe: SubscriptionMethods? = null,
@@ -47,7 +51,7 @@ class SolanaService (
         )
     }
 
-    fun connect() = callbackFlow {
+    suspend fun connect() {
         client.webSocket(method = HttpMethod.Get, host = Url(SOLANA_RPC).host) {
             val encodedRequest = Json.encodeToString(
                 MethodRequestBody.builder {
@@ -66,21 +70,28 @@ class SolanaService (
                 val content = incoming.receive() as? Frame.Text ?: continue
 
                 val text = content.readText()
-//                println("Received text: $text")
                 if (text.contains("\"params\"")) {
-                    val deserialized = Json.decodeFromString<WsNotification>(text)
-                    trySend(deserialized)
+                    val notification= Json.decodeFromString<SolanaNotification>(text)
+                    when(val method = notification.params?.notificationResult?.value) {
+                        is LogsNotification -> {
+                            val transaction = method.signature?.let { Rpc.getTransaction(it).first() }
+
+                            if (transaction == null) continue
+
+                            println(transaction)
+                        }
+
+                        is ProgramNotification -> {
+
+                        }
+                    }
                 }
 
             } while (!_isClosed.value)
 
-            this@callbackFlow.close()
-
             close()
 
-            awaitClose {
-                _isClosed.update { true }
-            }
+            _isClosed.update { true }
         }
     }
 
@@ -97,7 +108,7 @@ internal data class MethodRequestBody (
     private val params: List<JsonElement>?
 ) {
     companion object {
-        fun builder(block: Builder.() -> Unit) = MethodRequestBody.Builder().apply(block).build()
+        fun builder(block: Builder.() -> Unit) = Builder().apply(block).build()
     }
 
     data class Builder(
@@ -163,7 +174,7 @@ sealed class SubscriptionMethods(
         val mentions: List<String>? = null,
         val commitment: Commitment? = null,
 
-    ): SubscriptionMethods() {
+        ): SubscriptionMethods() {
         init {
             params = mutableListOf<JsonElement>().apply {
                     if (mentions == null && commitment == null) {

@@ -20,13 +20,14 @@ repositories {
 }
 
 dependencies {
+    implementation("io.ktor:ktor-client-cio-jvm:3.0.2")
     val ktor_version = "3.0.2"
-    implementation("org.sol4k:sol4k:0.5.4")
     implementation("io.ktor:ktor-client-core:$ktor_version")
     implementation("io.ktor:ktor-client-cio:$ktor_version")
     implementation("io.ktor:ktor-client-websockets:$ktor_version")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
     implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-client-logging:$ktor_version")
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.websockets)
     implementation(libs.ktor.server.content.negotiation)

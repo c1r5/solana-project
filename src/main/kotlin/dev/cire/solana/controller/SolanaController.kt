@@ -1,70 +1,55 @@
 package dev.cire.solana.controller
 
-import dev.cire.solana.data.LogsNotification
-import dev.cire.solana.data.ProgramNotification
-import dev.cire.solana.service.SolanaService
-import dev.cire.solana.service.SubscriptionMethods
+import dev.cire.solana.connection.SolanaWebsocket
 import io.ktor.http.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.launchIn
 
 
-fun Routing.solanaController() {
-    val service = SolanaService.Builder()
-        .subscription(SubscriptionMethods.LogsSubscribe(listOf("11111111111111111111111111111111")))
-        .build()
+fun Routing.solanaRouting() {
+    val parentJob = SupervisorJob();
 
-    webSocket("/ws") {
-        send(Frame.Text("Connected"))
+    val ws = SolanaWebsocket()
+    val subscription = ws.logsSubscribe()
 
-        val parentJob = SupervisorJob()
+    route("/solana") {
+        get("/connect") {
+            subscription.launchIn(CoroutineScope(Dispatchers.Default + parentJob))
+            call.respond(HttpStatusCode.OK)
+        }
+        get("/disconnect") {
+            parentJob.cancel()
+            call.respond(HttpStatusCode.OK)
+        }
+    }
+
+    webSocket("/solana/ws") {
+        send("Connected")
+
         val wsScope = CoroutineScope(parentJob + Dispatchers.IO)
 
         wsScope.launch {
-            service.incomingNotification
-                .filterNotNull()
-                .collect { notification ->
-
-                }
+            subscription.filterNotNull().collect {response ->
+                response.params?.result?.value?.signature?.let { send(it) }
+            }
         }
 
         wsScope.launch {
             for (frame in incoming) {
-                if (frame is Frame.Text) {
-                    val message = frame.readText()
-                    if (message == "bye") {
-                        close(CloseReason(CloseReason.Codes.NORMAL, "Client said BYE"))
-                        parentJob.cancel() // Encerra todas as coroutines relacionadas
-                    }
+                val text = frame as? Frame.Text ?: continue
+                val content = text.readText()
+
+                if (content == "bye") {
+                    close(CloseReason(CloseReason.Codes.NORMAL, "closed by client"))
                 }
             }
         }
 
         parentJob.join()
     }
-
-    route("/solana") {
-        get("/connect") {
-            CoroutineScope(Job()).launch {
-                service.connect()
-            }
-
-            call.respond(
-                message = HttpStatusCode.OK,
-                typeInfo = null
-            )
-        }
-
-        get("/close") {
-            service.disconnect()
-            call.respond(
-                HttpStatusCode.OK,
-                typeInfo = null
-            )
-        }
-    }
 }
-

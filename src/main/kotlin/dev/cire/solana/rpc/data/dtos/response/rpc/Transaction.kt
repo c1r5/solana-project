@@ -1,6 +1,5 @@
-package dev.cire.solana.rpc.data.dtos.response
+package dev.cire.solana.rpc.data.dtos.response.rpc
 
-import dev.cire.solana.rpc.data.dtos.response.Message
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 

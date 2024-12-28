@@ -6,5 +6,5 @@ import kotlinx.serialization.SerialName
 
 @Serializable
 data class Context (
-  @SerialName("slot" ) var slot : Int? = null
+  @SerialName("slot" ) var slot : Long? = null
 )

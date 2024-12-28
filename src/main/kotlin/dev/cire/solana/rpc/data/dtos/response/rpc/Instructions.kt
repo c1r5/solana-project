@@ -8,7 +8,7 @@ import kotlinx.serialization.SerialName
 data class Instructions(
 
     @SerialName("accounts")
-    var accounts: ArrayList<String> = arrayListOf(),
+    var accounts: ArrayList<String>? = arrayListOf(),
     @SerialName("data")
     var data: String? = null,
     @SerialName("programIdIndex")

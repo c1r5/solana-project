@@ -1,15 +1,13 @@
 import dev.cire.solana.connection.Address
 import dev.cire.solana.connection.SolanaRpc
 import dev.cire.solana.connection.SolanaWebsocket
-import dev.cire.solana.helper.transactionFactory
+import dev.cire.solana.rpc.data.Transaction
+import dev.cire.solana.rpc.data.TxInfo
 import dev.cire.solana.rpc.data.dtos.request.Commitment
 import dev.cire.solana.rpc.data.dtos.request.SubscribeMethod
-import dev.cire.solana.rpc.data.dtos.response.rpc.GetTransactionResponse
 import dev.cire.solana.rpc.data.dtos.response.ws.LogsSubscribeResponse
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import org.junit.Test
@@ -78,15 +76,29 @@ class SolanaServiceTest {
     }
 
     @Test
-    fun `test action detection`() {
+    fun `test action detection`() = runBlocking {
         val response = """
             {"jsonrpc":"2.0","method":"logsNotification","params":{"result":{"context":{"slot":310199880},"value":{"err":null,"logs":["Program ComputeBudget111111111111111111111111111111 invoke [1]","Program ComputeBudget111111111111111111111111111111 success","Program ComputeBudget111111111111111111111111111111 invoke [1]","Program ComputeBudget111111111111111111111111111111 success","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]","Program log: Instruction: Create","Program 11111111111111111111111111111111 invoke [2]","Program 11111111111111111111111111111111 success","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: InitializeMint2","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2780 of 167434 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program 11111111111111111111111111111111 invoke [2]","Program 11111111111111111111111111111111 success","Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]","Program log: Create","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]","Program log: Instruction: GetAccountDataSize","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1595 of 143538 compute units","Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program 11111111111111111111111111111111 invoke [3]","Program 11111111111111111111111111111111 success","Program log: Initialize the associated token account","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]","Program log: Instruction: InitializeImmutableOwner","Program log: Please upgrade to SPL Token 2022 for immutable owner support","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 136925 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]","Program log: Instruction: InitializeAccount3","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4214 of 133041 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 21990 of 150513 compute units","Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success","Program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s invoke [2]","Program log: IX: Create Metadata Accounts v3","Program 11111111111111111111111111111111 invoke [3]","Program 11111111111111111111111111111111 success","Program log: Allocate space for the account","Program 11111111111111111111111111111111 invoke [3]","Program 11111111111111111111111111111111 success","Program log: Assign the account to the owning program","Program 11111111111111111111111111111111 invoke [3]","Program 11111111111111111111111111111111 success","Program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s consumed 35524 of 113354 compute units","Program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s success","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: MintTo","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 75315 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: SetAuthority","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2911 of 68676 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [2]","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 2003 of 61652 compute units","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success","Program data: G3KpTd7rY3YFAAAANDQ0NDQFAAAANDQ0NDRDAAAAaHR0cHM6Ly9pcGZzLmlvL2lwZnMvUW1Xb21BUDhqSkxkNzNaTHlKbXJkSnFGQmhza1VySnkyVnBNR1JlTkJyMWdkR7Zis6PfVu5kKJvAYfPesL55QoFrqaygLpsk7BxbgrgPn0KsXE7lzrgqj1eysgV3XZ83iXIWTx4Xs10C3UjSCdTMg2jM0J1UQPhbqZQaX5IJNYhozv/ivJDyAN6mZt0QGw==","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 121133 of 178931 compute units","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success","Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]","Program log: CreateIdempotent","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: GetAccountDataSize","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 50897 compute units","Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program 11111111111111111111111111111111 invoke [2]","Program 11111111111111111111111111111111 success","Program log: Initialize the associated token account","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: InitializeImmutableOwner","Program log: Please upgrade to SPL Token 2022 for immutable owner support","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 44310 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: InitializeAccount3","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4188 of 40430 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 21839 of 57798 compute units","Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]","Program log: Instruction: Buy","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]","Program log: Instruction: Transfer","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 15816 compute units","Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success","Program 11111111111111111111111111111111 invoke [2]","Program 11111111111111111111111111111111 success","Program 11111111111111111111111111111111 invoke [2]","Program 11111111111111111111111111111111 success","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [2]","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 2003 of 3728 compute units","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success","Program data: vdt/007mYe62YrOj31buZCibwGHz3rC+eUKBa6msoC6bJOwcW4K4DwAYDY8AAAAACU14uUlIAAABzINozNCdVED4W6mUGl+SCTWIaM7/4ryQ8gDepmbdEBvhBW9nAAAAAADEMIsHAAAA98JfjpmHAwAAGA2PAAAAAPcqTUIIiQIA","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 35959 of 35959 compute units","Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success"],"signature":"3PDrzPNDBXNZDJyGvQGRhppZW16rHVUZi5mNjJs2aELydBiYLxtG7WD3JS5skFCGv36WseLzDib1KwayUZpgP3mC"}},"subscription":887487}}
         """.trimIndent()
 
         val encode = Json.decodeFromString<LogsSubscribeResponse>(response)
 
-        val transactionFactory = transactionFactory(encode)
+        val transactionFactory = Transaction.from(encode).apply {
+            val transactionResponse  = rpc.getTransaction(signature).getOrNull()
 
-        println(Json.encodeToString(transactionFactory))
+            txInfo = when (txInfo) {
+                is TxInfo.Create -> transactionResponse
+                    ?.getInfo("create")
+                    ?.let { TxInfo.Create(mint = it.mint) }
+                else -> txInfo
+            }
+
+            transactionResponse
+                ?.getInfo("transfer")
+                ?.source
+                ?.let { traderPublicKey = it }
+        }
+
+        println(transactionFactory)
     }
 }

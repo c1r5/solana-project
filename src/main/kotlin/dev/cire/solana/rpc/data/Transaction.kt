@@ -1,9 +1,11 @@
 package dev.cire.solana.rpc.data
 
+import dev.cire.solana.helper.*
+import dev.cire.solana.rpc.data.dtos.response.ws.LogsSubscribeResponse
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-enum class DefiPlatform (val address: String){
+enum class DefiPlatform (var address: String){
     PUMPFUN("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
 //    RAYDIUMv2(""),
 //    RAYDIUMv3(""),
@@ -16,10 +18,10 @@ sealed class TxInfo {
     @SerialName("create_token")
     data class Create(
         @SerialName("token_address")
-        val mint: String? = null,
-        val symbol: String? = null,
-        val name: String? = null,
-        val uri: String? = null,
+        var mint: String? = null,
+        var symbol: String? = null,
+        var name: String? = null,
+        var uri: String? = null,
     ) : TxInfo()
 
     @Serializable
@@ -29,14 +31,31 @@ sealed class TxInfo {
 
 @Serializable
 data class Transaction(
-    val signature: String? = null,
-    val traderPublicKey: String? = null,
-    val txInfo: TxInfo? = null,
-    val initialBuy: Double? = null,
-    val solAmount: Double? = null,
-    val bondingCurveKey: String? = null,
-    val vTokensInBondingCurve: Double? = null,
-    val vSolInBondingCurve: Double? = null,
-    val marketCapSol: Double? = null,
-    val pool: DefiPlatform? = null,
-)
+    var signature: String? = null,
+    var slot: Long? = null,
+    var traderPublicKey: String? = null,
+    var txInfo: TxInfo? = null,
+    var initialBuy: Double? = null,
+    var solAmount: Double? = null,
+    var bondingCurveKey: String? = null,
+    var vTokensInBondingCurve: Double? = null,
+    var vSolInBondingCurve: Double? = null,
+    var marketCapSol: Double? = null,
+    var pool: DefiPlatform? = null,
+) {
+    companion object {
+        fun from (response: LogsSubscribeResponse): Transaction {
+            val logs: Logs = response.params?.result?.value?.logs
+
+            return Transaction(
+                signature = response.params?.result?.value?.signature,
+                slot = response.params?.result?.context?.slot,
+                traderPublicKey = null,
+                txInfo = logs.txInfo() ?: TxInfo.Unknown,
+                solAmount = null,
+                marketCapSol = null,
+                pool = logs.pool()
+            )
+        }
+    }
+}

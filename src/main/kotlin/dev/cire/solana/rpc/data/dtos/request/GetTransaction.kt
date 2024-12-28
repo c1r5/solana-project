@@ -11,7 +11,7 @@ data class GetTransaction (
     companion object {
         fun default(): GetTransaction {
             return GetTransaction(
-                encoding = Encoding.JSON,
+                encoding = Encoding.JSON_PARSED,
                 maxSupportedTransactionVersion = 0
             )
         }

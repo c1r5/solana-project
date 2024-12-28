@@ -5,11 +5,20 @@ import kotlinx.serialization.SerialName
 
 
 @Serializable
-data class Instructions (
+data class Instructions(
 
-  @SerialName("accounts"       ) var accounts       : ArrayList<Int> = arrayListOf(),
-  @SerialName("data"           ) var data           : String?           = null,
-  @SerialName("programIdIndex" ) var programIdIndex : Int?              = null,
-  @SerialName("stackHeight"    ) var stackHeight    : Int?           = null
-
+    @SerialName("accounts")
+    var accounts: ArrayList<String> = arrayListOf(),
+    @SerialName("data")
+    var data: String? = null,
+    @SerialName("programIdIndex")
+    var programIdIndex: Int? = null,
+    @SerialName("parsed")
+    var parsed: Parsed? = null,
+    @SerialName("stackHeight")
+    var stackHeight: Int? = null,
+    @SerialName("program")
+    var program: String? = null,
+    @SerialName("programId")
+    var programId: String? = null,
 )

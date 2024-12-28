@@ -5,12 +5,10 @@ import kotlinx.serialization.SerialName
 
 
 @Serializable
-data class GetTransactionResult (
-
-    @SerialName("blockTime"   ) var blockTime   : Int?         = null,
-    @SerialName("meta"        ) var meta        : Meta?        = Meta(),
-    @SerialName("slot"        ) var slot        : Int?         = null,
-    @SerialName("transaction" ) var transaction : Transaction? = Transaction(),
-    @SerialName("version"     ) var version     : Int?         = null
-
+data class GetTransactionResult(
+    var blockTime: Int? = null,
+    var meta: Meta? = Meta(),
+    var slot: Int? = null,
+    var transaction: Transaction? = Transaction(),
+    var version: Int? = null
 )

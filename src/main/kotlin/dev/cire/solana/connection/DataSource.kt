@@ -1,11 +1,9 @@
 package dev.cire.solana.connection
 
-import dev.cire.solana.rpc.data.dtos.request.Commitment
 import dev.cire.solana.rpc.data.dtos.request.GetTransaction
 import dev.cire.solana.rpc.data.dtos.request.SubscribeMethod
 import dev.cire.solana.rpc.data.dtos.response.rpc.GetTransactionResponse
 import dev.cire.solana.rpc.data.dtos.response.ws.LogsSubscribeResponse
-import dev.cire.solana.rpc.data.dtos.response.ws.LogsSubscribeResult
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
@@ -17,8 +15,9 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
@@ -37,30 +36,30 @@ private val client = HttpClient(CIO) {
     }
 }
 
-data object SolanaRpc {
-    fun getTransaction(
-        signature: String,
+class SolanaRpc (private val dispatcher: CoroutineDispatcher) {
+    suspend fun getTransaction(
+        signature: String?,
         config: GetTransaction = GetTransaction.default(),
-    ) = callbackFlow {
-        val params = mutableListOf(Json.encodeToJsonElement(signature))
+    ) = runCatching {
+        withContext(dispatcher) {
+            if (signature == null) error("Signature isn't supported")
 
-        params.add(Json.encodeToJsonElement(config))
+            val params = mutableListOf(Json.encodeToJsonElement(signature))
 
-        val request = SubscribeMethod.from("getTransaction", params)
+            params.add(Json.encodeToJsonElement(config))
 
-        val response = client.post(RpcUrl.MAINNNET.value) {
-            setBody(request)
-            contentType(ContentType.Application.Json)
+            val request = SubscribeMethod.from("getTransaction", params)
+
+            val response = client.post(RpcUrl.MAINNNET.value) {
+                setBody(request)
+                contentType(ContentType.Application.Json)
+            }
+
+            if (!response.status.isSuccess()) error(IllegalStateException("Unexpected response code ${response.status}"))
+            if (response.bodyAsText().contains("error")) error(IllegalStateException("Unexpected error response"))
+
+            response.body<GetTransactionResponse>()
         }
-
-        if (!response.status.isSuccess()) close(IllegalStateException("Unexpected response code ${response.status}"))
-        if (response.bodyAsText().contains("error")) close(IllegalStateException("Unexpected error response"))
-
-        val responseBody = response.body<GetTransactionResponse>()
-
-        send(responseBody)
-
-        awaitClose {}
     }
 }
 
@@ -73,13 +72,7 @@ class SolanaWebsocket {
             host = websocketURL.host
         ) {
 
-            val methodRequest = SubscribeMethod.from(
-                method = "logsSubscribe",
-                params = listOf(
-                    Json.encodeToJsonElement(mapOf("mentions" to listOf(Address.SYSTEM_ADDRESS))),
-                    Json.encodeToJsonElement(mapOf("commitent" to Commitment.FINALIZED))
-                )
-            )
+            val methodRequest = SubscribeMethod.from(method = "logsSubscribe")
 
             val encoded = Json.encodeToString(methodRequest)
 

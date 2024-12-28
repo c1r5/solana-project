@@ -11,23 +11,37 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 
 fun Routing.solanaRouting() {
-    val websocketServerScope = CoroutineScope(Dispatchers.IO + SupervisorJob());
-    val websocketClientScope = CoroutineScope(Dispatchers.Default + SupervisorJob());
+    val parentJob = SupervisorJob()
 
-    val ws = SolanaWebsocket()
+    val websocketClientScope = CoroutineScope(Dispatchers.Default + parentJob)
+    val websocketServerScope = CoroutineScope(Dispatchers.IO + parentJob);
+
     val rpc = SolanaRpc(Dispatchers.IO)
+    val ws = SolanaWebsocket()
 
     val subscription = ws.logsSubscribe()
+        .map { Transaction.from(it) }
+        .filter { it.pool == DefiPlatform.PUMPFUN && it.txInfo is TxInfo.Create}
+        .mapNotNull { transaction ->
+            val details = rpc.getTransaction(transaction.signature).getOrNull() ?: return@mapNotNull null
 
+            transaction.apply {
+                txInfo = when (transaction.txInfo) {
+                    is TxInfo.Create -> (transaction.txInfo as TxInfo.Create)
+                        .apply {
+                            details.getInfo("create")?.let { mint = it.mint }
+                        }
+
+                    else -> transaction.txInfo
+                }
+            }
+        }
     route("/solana") {
         get("/connect") {
             subscription.launchIn(websocketClientScope)
@@ -43,29 +57,9 @@ fun Routing.solanaRouting() {
         send("Connected")
 
         websocketServerScope.launch {
-            subscription
-                .filterNotNull()
-                .mapNotNull { response ->
-                    Transaction.from(response)
-                }
-                .filter { transaction ->
-                    transaction.pool == DefiPlatform.PUMPFUN && transaction.txInfo is TxInfo.Create
-                }
-                .mapNotNull {transaction ->
-                    transaction.apply {
-                        val transactionResponse  = rpc.getTransaction(signature).getOrNull()
-                        txInfo = when (txInfo) {
-                            is TxInfo.Create -> transactionResponse
-                                ?.getInfo("create")
-                                ?.let { TxInfo.Create(mint = it.mint) }
-                            else -> txInfo
-                        }
-                        transactionResponse?.getInfo("transfer")?.source?.let { traderPublicKey = it }
-                    }
-                }
-                .collect { transaction ->
-                    send(Json.encodeToString(transaction))
-                }
+            subscription.collect { transaction ->
+                send(Json.encodeToString(transaction))
+            }
         }
 
         websocketServerScope.launch {
@@ -75,11 +69,10 @@ fun Routing.solanaRouting() {
 
                 if (content == "bye") {
                     close(CloseReason(CloseReason.Codes.NORMAL, "closed by client"))
-                    websocketServerScope.cancel()
                 }
             }
         }
 
-        websocketServerScope.coroutineContext.job.join()
+        parentJob.join()
     }
 }

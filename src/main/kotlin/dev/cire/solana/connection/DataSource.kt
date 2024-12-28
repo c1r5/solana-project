@@ -1,5 +1,7 @@
 package dev.cire.solana.connection
 
+import dev.cire.solana.rpc.data.Transaction
+import dev.cire.solana.rpc.data.TxInfo
 import dev.cire.solana.rpc.data.dtos.request.GetTransaction
 import dev.cire.solana.rpc.data.dtos.request.SubscribeMethod
 import dev.cire.solana.rpc.data.dtos.response.rpc.GetTransactionResponse
@@ -12,11 +14,11 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.content.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -25,11 +27,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 
 
 private val client = HttpClient(CIO) {
-    install(WebSockets)
-    install(Logging) {
-        logger = Logger.DEFAULT
-        level = LogLevel.ALL
-    }
+    install(WebSockets) {}
     install(ContentNegotiation) {
         json(json = Json {
             ignoreUnknownKeys = true
@@ -65,13 +63,9 @@ class SolanaRpc (private val dispatcher: CoroutineDispatcher) {
 }
 
 class SolanaWebsocket {
-    private val websocketURL = Url(RpcUrl.WSNODE.value)
 
     fun logsSubscribe() = flow {
-        client.webSocket(
-            method = HttpMethod.Get,
-            host = websocketURL.host
-        ) {
+        client.webSocket(RpcUrl.WSNODE.value) {
 
             val methodRequest = SubscribeMethod.from(method = "logsSubscribe")
 
@@ -84,9 +78,7 @@ class SolanaWebsocket {
                     val text = frame as? Frame.Text ?: continue
                     val content = text.readText()
                     if (!content.contains("\"logsNotification\"")) continue
-
                     val decoded = Json.decodeFromString<LogsSubscribeResponse>(content)
-
                     emit(decoded)
                 }
             }

@@ -10,5 +10,4 @@ data class GetTransactionResult(
     var meta: Meta? = Meta(),
     var slot: Int? = null,
     var transaction: Transaction? = Transaction(),
-    var version: Int? = null
 )
